@@ -5,11 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Inventário</title>
 
-  <!-- ===================== ESTILOS (CSS) ===================== -->
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #2c2c2c;     /* Fundo escuro */
+      background-color: #2c2c2c;
       margin: 0;
       padding: 20px;
       color: white;
@@ -19,7 +18,6 @@
       text-align: center;
     }
 
-    /* Caixas do login e das seções */
     section, .box {
       background-color: #3a3a3a;
       padding: 20px;
@@ -52,12 +50,10 @@
       background-color: #1557b0;
     }
 
-    /* Botão cinza (Criar conta / Sair) */
     .btn-secundario {
       background-color: #555;
     }
 
-    /* Container da senha + botão do olho */
     .senha-container {
       position: relative;
     }
@@ -84,17 +80,14 @@
       border-radius: 6px;
     }
 
-    /* Cores do saldo */
-    .saldo-ok { color: #4caf50; }       /* Verde = completo */
-    .saldo-falta { color: #ff9800; }    /* Laranja = ainda falta */
-    .saldo-excesso { color: #f44336; }  /* Vermelho = retirou a mais */
+    .saldo-ok { color: #4caf50; }
+    .saldo-falta { color: #ff9800; }
+    .saldo-excesso { color: #f44336; }
 
-    /* Esconde elementos */
     .escondido {
       display: none;
     }
 
-    /* Cabeçalho com botão Sair */
     .topo {
       display: flex;
       justify-content: space-between;
@@ -106,32 +99,26 @@
 </head>
 <body>
 
-  <!-- ===================== TELA DE LOGIN ===================== -->
+  <!-- TELA DE LOGIN -->
   <div id="telaLogin">
     <h1>Sistema de Inventário</h1>
 
     <div class="box">
       <h2 id="tituloAuth">Entrar</h2>
 
-      <!-- Campo de usuário -->
       <input type="text" id="usuario" placeholder="Usuário">
 
-      <!-- Campo de senha + botão de mostrar/ocultar -->
       <div class="senha-container">
         <input type="password" id="senha" placeholder="Senha">
         <button type="button" class="btn-olho" onclick="mostrarSenha()">👁</button>
       </div>
 
-      <!-- Botão principal (muda entre Entrar e Cadastrar) -->
       <button id="botaoPrincipal" onclick="fazerLogin()">Entrar</button>
-
-      <!-- Botão para alternar entre Login e Cadastro -->
       <button class="btn-secundario" onclick="mostrarCadastro()">Criar nova conta</button>
     </div>
   </div>
 
-  <!-- ===================== SISTEMA PRINCIPAL ===================== -->
-  <!-- Só aparece depois que o usuário faz login -->
+  <!-- SISTEMA PRINCIPAL -->
   <div id="sistema" class="escondido">
 
     <div class="topo">
@@ -139,7 +126,6 @@
       <button onclick="sair()" style="width: auto;">Sair</button>
     </div>
 
-    <!-- Seção: Cadastrar Produto -->
     <section>
       <h2>Cadastrar Produto</h2>
       <input type="text" id="nomeProduto" placeholder="Nome do produto">
@@ -147,7 +133,6 @@
       <button onclick="adicionarProduto()">Adicionar Produto</button>
     </section>
 
-    <!-- Seção: Estoque Atual -->
     <section>
       <h2>Estoque Atual</h2>
       <ul id="listaEstoque">
@@ -155,7 +140,6 @@
       </ul>
     </section>
 
-    <!-- Seção: Retirar Material -->
     <section>
       <h2>Retirar Material</h2>
       <input type="text" id="codigoOP" placeholder="Código da Ordem de Produção">
@@ -165,7 +149,6 @@
       <button onclick="retirarMaterial()">Retirar</button>
     </section>
 
-    <!-- Seção: Saldo por OP -->
     <section>
       <h2>Saldo por Ordem de Produção</h2>
       <ul id="listaSaldo">
@@ -175,27 +158,28 @@
 
   </div>
 
-  <!-- ===================== JAVASCRIPT ===================== -->
   <script>
-    // ---------- DADOS SALVOS NO NAVEGADOR ----------
-    // Carrega os dados do localStorage (ou cria lista vazia se for a primeira vez)
+    // ===================== DADOS =====================
     let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
-    let historico = JSON.parse(localStorage.getItem("historico")) || [];
+    let saldos = JSON.parse(localStorage.getItem("saldos")) || {};
     let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
 
-    // ---------- MOSTRAR / OCULTAR SENHA ----------
-    function mostrarSenha() {
-      const campo = document.getElementById("senha");
-      // Se estiver escondida, mostra. Se estiver visível, esconde.
-      if (campo.type === "password") {
-        campo.type = "text";
-      } else {
-        campo.type = "password";
-      }
+    // ===================== HASH DA SENHA =====================
+    async function gerarHash(texto) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(texto);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
     }
 
-    // ---------- ALTERNAR ENTRE LOGIN E CADASTRO ----------
-    let modoCadastro = false; // controla se está no modo de criar conta
+    function mostrarSenha() {
+      const campo = document.getElementById("senha");
+      campo.type = campo.type === "password" ? "text" : "password";
+    }
+
+    // ===================== LOGIN / CADASTRO =====================
+    let modoCadastro = false;
 
     function mostrarCadastro() {
       modoCadastro = !modoCadastro;
@@ -203,68 +187,58 @@
       const botao = document.getElementById("botaoPrincipal");
 
       if (modoCadastro) {
-        // Muda para modo Cadastro
         titulo.innerText = "Criar Conta";
         botao.innerText = "Cadastrar";
         botao.onclick = cadastrarUsuario;
       } else {
-        // Volta para modo Login
         titulo.innerText = "Entrar";
         botao.innerText = "Entrar";
         botao.onclick = fazerLogin;
       }
     }
 
-    // ---------- CADASTRAR NOVO USUÁRIO ----------
-    function cadastrarUsuario() {
+    async function cadastrarUsuario() {
       const usuario = document.getElementById("usuario").value.trim();
       const senha = document.getElementById("senha").value;
 
-      if (usuario === "" || senha === "") {
+      if (!usuario || !senha) {
         alert("Preencha usuário e senha!");
         return;
       }
 
-      // Verifica se o usuário já existe
-      const existe = usuarios.find(u => u.usuario === usuario);
-      if (existe) {
+      if (usuarios.find(u => u.usuario === usuario)) {
         alert("Esse usuário já existe!");
         return;
       }
 
-      // Adiciona o novo usuário
-      usuarios.push({ usuario: usuario, senha: senha });
+      const senhaHash = await gerarHash(senha);
+      usuarios.push({ usuario, senha: senhaHash });
       localStorage.setItem("usuarios", JSON.stringify(usuarios));
 
       alert("Conta criada com sucesso! Agora faça login.");
-      mostrarCadastro(); // volta para a tela de login
+      mostrarCadastro();
       document.getElementById("usuario").value = "";
       document.getElementById("senha").value = "";
     }
 
-    // ---------- FAZER LOGIN ----------
-    function fazerLogin() {
+    async function fazerLogin() {
       const usuario = document.getElementById("usuario").value.trim();
       const senha = document.getElementById("senha").value;
 
-      // Procura se existe um usuário com esse nome e senha
-      const encontrado = usuarios.find(u => u.usuario === usuario && u.senha === senha);
+      const senhaHash = await gerarHash(senha);
+      const encontrado = usuarios.find(u => u.usuario === usuario && u.senha === senhaHash);
 
       if (!encontrado) {
         alert("Usuário ou senha incorretos!");
         return;
       }
 
-      // Esconde a tela de login e mostra o sistema
       document.getElementById("telaLogin").classList.add("escondido");
       document.getElementById("sistema").classList.remove("escondido");
-
-      // Atualiza as listas na tela
       atualizarLista();
       atualizarSaldo();
     }
 
-    // ---------- SAIR DO SISTEMA ----------
     function sair() {
       document.getElementById("sistema").classList.add("escondido");
       document.getElementById("telaLogin").classList.remove("escondido");
@@ -272,69 +246,86 @@
       document.getElementById("senha").value = "";
     }
 
-    // ---------- ADICIONAR PRODUTO ----------
+    // ===================== PRODUTOS =====================
     function adicionarProduto() {
       const nome = document.getElementById("nomeProduto").value.trim();
       const quantidade = Number(document.getElementById("quantidadeInicial").value);
 
-      if (nome === "") {
+      if (!nome) {
         alert("Digite o nome do produto!");
         return;
       }
-
       if (isNaN(quantidade) || quantidade < 0) {
         alert("Digite uma quantidade válida!");
         return;
       }
 
-      produtos.push({ nome: nome, quantidade: quantidade });
-      localStorage.setItem("produtos", JSON.stringify(produtos)); // salva no navegador
+      const existente = produtos.find(p => p.nome.toLowerCase() === nome.toLowerCase());
+      if (existente) {
+        existente.quantidade += quantidade;
+      } else {
+        produtos.push({ nome, quantidade });
+      }
 
+      localStorage.setItem("produtos", JSON.stringify(produtos));
       document.getElementById("nomeProduto").value = "";
       document.getElementById("quantidadeInicial").value = "";
       atualizarLista();
     }
 
-    // ---------- RETIRAR MATERIAL ----------
+    // ===================== RETIRADA =====================
     function retirarMaterial() {
       const codigoOP = document.getElementById("codigoOP").value.trim();
       const quantidadeOP = Number(document.getElementById("quantidadeOP").value);
       const nome = document.getElementById("produtoRetirada").value.trim();
-      const quantidade = Number(document.getElementById("quantidadeRetirada").value);
+      const quantidadeSolicitada = Number(document.getElementById("quantidadeRetirada").value);
 
-      if (codigoOP === "" || nome === "" || isNaN(quantidadeOP) || isNaN(quantidade) || quantidade <= 0) {
+      if (!codigoOP || !nome || isNaN(quantidadeOP) || isNaN(quantidadeSolicitada) || quantidadeSolicitada <= 0) {
         alert("Preencha todos os campos corretamente!");
         return;
       }
 
       const produto = produtos.find(p => p.nome.toLowerCase() === nome.toLowerCase());
-
       if (!produto) {
         alert("Produto não encontrado!");
         return;
       }
 
-      if (produto.quantidade < quantidade) {
-        alert(`Estoque insuficiente! Você só tem ${produto.quantidade} unidades.`);
+      const chave = `${codigoOP}|${nome.toLowerCase()}`;
+
+      if (!saldos[chave]) {
+        saldos[chave] = {
+          codigoOP: codigoOP,
+          produto: nome,
+          quantidadeOP: quantidadeOP,
+          totalRetirado: 0
+        };
+      }
+
+      const saldo = saldos[chave];
+      const falta = saldo.quantidadeOP - saldo.totalRetirado;
+
+      let quantidadeReal = Math.min(
+        quantidadeSolicitada,
+        produto.quantidade,
+        falta > 0 ? falta : quantidadeSolicitada
+      );
+
+      if (quantidadeReal <= 0) {
+        if (produto.quantidade <= 0) {
+          alert("Estoque insuficiente!");
+        } else {
+          alert("Essa OP já está completa para este produto!");
+        }
         return;
       }
 
-      // Diminui do estoque
-      produto.quantidade -= quantidade;
+      produto.quantidade -= quantidadeReal;
+      saldo.totalRetirado += quantidadeReal;
 
-      // Registra no histórico
-      historico.push({
-        codigoOP: codigoOP,
-        produto: nome,
-        quantidadeOP: quantidadeOP,
-        quantidadeRetirada: quantidade
-      });
-
-      // Salva no navegador
       localStorage.setItem("produtos", JSON.stringify(produtos));
-      localStorage.setItem("historico", JSON.stringify(historico));
+      localStorage.setItem("saldos", JSON.stringify(saldos));
 
-      // Limpa os campos
       document.getElementById("codigoOP").value = "";
       document.getElementById("quantidadeOP").value = "";
       document.getElementById("produtoRetirada").value = "";
@@ -342,10 +333,15 @@
 
       atualizarLista();
       atualizarSaldo();
-      alert("Retirada realizada com sucesso!");
+
+      if (quantidadeReal < quantidadeSolicitada) {
+        alert(`Retirado apenas ${quantidadeReal} unidades (limitado pelo saldo da OP ou estoque).`);
+      } else {
+        alert("Retirada realizada com sucesso!");
+      }
     }
 
-    // ---------- ATUALIZAR LISTA DE ESTOQUE ----------
+    // ===================== ATUALIZAR TELAS =====================
     function atualizarLista() {
       const lista = document.getElementById("listaEstoque");
 
@@ -355,41 +351,24 @@
       }
 
       lista.innerHTML = "";
-      produtos.forEach(function(p) {
+      produtos.forEach(p => {
         lista.innerHTML += `<li><strong>${p.nome}</strong> — Quantidade: ${p.quantidade}</li>`;
       });
     }
 
-    // ---------- ATUALIZAR SALDO POR OP ----------
     function atualizarSaldo() {
       const lista = document.getElementById("listaSaldo");
+      const chaves = Object.keys(saldos);
 
-      if (historico.length === 0) {
+      if (chaves.length === 0) {
         lista.innerHTML = "<li>Nenhuma retirada registrada ainda.</li>";
         return;
       }
 
-      // Agrupa as retiradas por OP + Produto
-      const agrupado = {};
-
-      historico.forEach(function(item) {
-        const chave = item.codigoOP + " | " + item.produto;
-
-        if (!agrupado[chave]) {
-          agrupado[chave] = {
-            codigoOP: item.codigoOP,
-            produto: item.produto,
-            quantidadeOP: item.quantidadeOP,
-            totalRetirado: 0
-          };
-        }
-        agrupado[chave].totalRetirado += item.quantidadeRetirada;
-      });
-
       lista.innerHTML = "";
 
-      for (let chave in agrupado) {
-        const item = agrupado[chave];
+      chaves.forEach(chave => {
+        const item = saldos[chave];
         const falta = item.quantidadeOP - item.totalRetirado;
 
         let status = "";
@@ -415,7 +394,7 @@
             <span class="${classe}">${status}</span>
           </li>
         `;
-      }
+      });
     }
   </script>
 
