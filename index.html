@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Inventário</title>
+
+  <!-- ===================== ESTILOS (CSS) ===================== -->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #2c2c2c;     /* Fundo escuro */
+      margin: 0;
+      padding: 20px;
+      color: white;
+    }
+
+    h1, h2 {
+      text-align: center;
+    }
+
+    /* Caixas do login e das seções */
+    section, .box {
+      background-color: #3a3a3a;
+      padding: 20px;
+      margin: 0 auto 20px auto;
+      border-radius: 8px;
+      max-width: 500px;
+    }
+
+    input {
+      padding: 10px;
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      border: none;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      background-color: #1a73e8;
+      color: white;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    button:hover {
+      background-color: #1557b0;
+    }
+
+    /* Botão cinza (Criar conta / Sair) */
+    .btn-secundario {
+      background-color: #555;
+    }
+
+    /* Container da senha + botão do olho */
+    .senha-container {
+      position: relative;
+    }
+
+    .btn-olho {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      width: auto;
+      padding: 5px 10px;
+      background-color: #555;
+      font-size: 12px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background-color: #4a4a4a;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+    }
+
+    /* Cores do saldo */
+    .saldo-ok { color: #4caf50; }       /* Verde = completo */
+    .saldo-falta { color: #ff9800; }    /* Laranja = ainda falta */
+    .saldo-excesso { color: #f44336; }  /* Vermelho = retirou a mais */
+
+    /* Esconde elementos */
+    .escondido {
+      display: none;
+    }
+
+    /* Cabeçalho com botão Sair */
+    .topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 500px;
+      margin: 0 auto 20px auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== TELA DE LOGIN ===================== -->
+  <div id="telaLogin">
+    <h1>Sistema de Inventário</h1>
+
+    <div class="box">
+      <h2 id="tituloAuth">Entrar</h2>
+
+      <!-- Campo de usuário -->
+      <input type="text" id="usuario" placeholder="Usuário">
+
+      <!-- Campo de senha + botão de mostrar/ocultar -->
+      <div class="senha-container">
+        <input type="password" id="senha" placeholder="Senha">
+        <button type="button" class="btn-olho" onclick="mostrarSenha()">👁</button>
+      </div>
+
+      <!-- Botão principal (muda entre Entrar e Cadastrar) -->
+      <button id="botaoPrincipal" onclick="fazerLogin()">Entrar</button>
+
+      <!-- Botão para alternar entre Login e Cadastro -->
+      <button class="btn-secundario" onclick="mostrarCadastro()">Criar nova conta</button>
+    </div>
+  </div>
+
+  <!-- ===================== SISTEMA PRINCIPAL ===================== -->
+  <!-- Só aparece depois que o usuário faz login -->
+  <div id="sistema" class="escondido">
+
+    <div class="topo">
+      <h1>Sistema de Inventário</h1>
+      <button onclick="sair()" style="width: auto;">Sair</button>
+    </div>
+
+    <!-- Seção: Cadastrar Produto -->
+    <section>
+      <h2>Cadastrar Produto</h2>
+      <input type="text" id="nomeProduto" placeholder="Nome do produto">
+      <input type="number" id="quantidadeInicial" placeholder="Quantidade inicial" min="0">
+      <button onclick="adicionarProduto()">Adicionar Produto</button>
+    </section>
+
+    <!-- Seção: Estoque Atual -->
+    <section>
+      <h2>Estoque Atual</h2>
+      <ul id="listaEstoque">
+        <li>Nenhum produto cadastrado ainda.</li>
+      </ul>
+    </section>
+
+    <!-- Seção: Retirar Material -->
+    <section>
+      <h2>Retirar Material</h2>
+      <input type="text" id="codigoOP" placeholder="Código da Ordem de Produção">
+      <input type="number" id="quantidadeOP" placeholder="Quantidade pedida pela OP" min="1">
+      <input type="text" id="produtoRetirada" placeholder="Nome do produto">
+      <input type="number" id="quantidadeRetirada" placeholder="Quantidade a retirar" min="1">
+      <button onclick="retirarMaterial()">Retirar</button>
+    </section>
+
+    <!-- Seção: Saldo por OP -->
+    <section>
+      <h2>Saldo por Ordem de Produção</h2>
+      <ul id="listaSaldo">
+        <li>Nenhuma retirada registrada ainda.</li>
+      </ul>
+    </section>
+
+  </div>
+
+  <!-- ===================== JAVASCRIPT ===================== -->
+  <script>
+    // ---------- DADOS SALVOS NO NAVEGADOR ----------
+    // Carrega os dados do localStorage (ou cria lista vazia se for a primeira vez)
+    let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
+    let historico = JSON.parse(localStorage.getItem("historico")) || [];
+    let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
+
+    // ---------- MOSTRAR / OCULTAR SENHA ----------
+    function mostrarSenha() {
+      const campo = document.getElementById("senha");
+      // Se estiver escondida, mostra. Se estiver visível, esconde.
+      if (campo.type === "password") {
+        campo.type = "text";
+      } else {
+        campo.type = "password";
+      }
+    }
+
+    // ---------- ALTERNAR ENTRE LOGIN E CADASTRO ----------
+    let modoCadastro = false; // controla se está no modo de criar conta
+
+    function mostrarCadastro() {
+      modoCadastro = !modoCadastro;
+      const titulo = document.getElementById("tituloAuth");
+      const botao = document.getElementById("botaoPrincipal");
+
+      if (modoCadastro) {
+        // Muda para modo Cadastro
+        titulo.innerText = "Criar Conta";
+        botao.innerText = "Cadastrar";
+        botao.onclick = cadastrarUsuario;
+      } else {
+        // Volta para modo Login
+        titulo.innerText = "Entrar";
+        botao.innerText = "Entrar";
+        botao.onclick = fazerLogin;
+      }
+    }
+
+    // ---------- CADASTRAR NOVO USUÁRIO ----------
+    function cadastrarUsuario() {
+      const usuario = document.getElementById("usuario").value.trim();
+      const senha = document.getElementById("senha").value;
+
+      if (usuario === "" || senha === "") {
+        alert("Preencha usuário e senha!");
+        return;
+      }
+
+      // Verifica se o usuário já existe
+      const existe = usuarios.find(u => u.usuario === usuario);
+      if (existe) {
+        alert("Esse usuário já existe!");
+        return;
+      }
+
+      // Adiciona o novo usuário
+      usuarios.push({ usuario: usuario, senha: senha });
+      localStorage.setItem("usuarios", JSON.stringify(usuarios));
+
+      alert("Conta criada com sucesso! Agora faça login.");
+      mostrarCadastro(); // volta para a tela de login
+      document.getElementById("usuario").value = "";
+      document.getElementById("senha").value = "";
+    }
+
+    // ---------- FAZER LOGIN ----------
+    function fazerLogin() {
+      const usuario = document.getElementById("usuario").value.trim();
+      const senha = document.getElementById("senha").value;
+
+      // Procura se existe um usuário com esse nome e senha
+      const encontrado = usuarios.find(u => u.usuario === usuario && u.senha === senha);
+
+      if (!encontrado) {
+        alert("Usuário ou senha incorretos!");
+        return;
+      }
+
+      // Esconde a tela de login e mostra o sistema
+      document.getElementById("telaLogin").classList.add("escondido");
+      document.getElementById("sistema").classList.remove("escondido");
+
+      // Atualiza as listas na tela
+      atualizarLista();
+      atualizarSaldo();
+    }
+
+    // ---------- SAIR DO SISTEMA ----------
+    function sair() {
+      document.getElementById("sistema").classList.add("escondido");
+      document.getElementById("telaLogin").classList.remove("escondido");
+      document.getElementById("usuario").value = "";
+      document.getElementById("senha").value = "";
+    }
+
+    // ---------- ADICIONAR PRODUTO ----------
+    function adicionarProduto() {
+      const nome = document.getElementById("nomeProduto").value.trim();
+      const quantidade = Number(document.getElementById("quantidadeInicial").value);
+
+      if (nome === "") {
+        alert("Digite o nome do produto!");
+        return;
+      }
+
+      if (isNaN(quantidade) || quantidade < 0) {
+        alert("Digite uma quantidade válida!");
+        return;
+      }
+
+      produtos.push({ nome: nome, quantidade: quantidade });
+      localStorage.setItem("produtos", JSON.stringify(produtos)); // salva no navegador
+
+      document.getElementById("nomeProduto").value = "";
+      document.getElementById("quantidadeInicial").value = "";
+      atualizarLista();
+    }
+
+    // ---------- RETIRAR MATERIAL ----------
+    function retirarMaterial() {
+      const codigoOP = document.getElementById("codigoOP").value.trim();
+      const quantidadeOP = Number(document.getElementById("quantidadeOP").value);
+      const nome = document.getElementById("produtoRetirada").value.trim();
+      const quantidade = Number(document.getElementById("quantidadeRetirada").value);
+
+      if (codigoOP === "" || nome === "" || isNaN(quantidadeOP) || isNaN(quantidade) || quantidade <= 0) {
+        alert("Preencha todos os campos corretamente!");
+        return;
+      }
+
+      const produto = produtos.find(p => p.nome.toLowerCase() === nome.toLowerCase());
+
+      if (!produto) {
+        alert("Produto não encontrado!");
+        return;
+      }
+
+      if (produto.quantidade < quantidade) {
+        alert(`Estoque insuficiente! Você só tem ${produto.quantidade} unidades.`);
+        return;
+      }
+
+      // Diminui do estoque
+      produto.quantidade -= quantidade;
+
+      // Registra no histórico
+      historico.push({
+        codigoOP: codigoOP,
+        produto: nome,
+        quantidadeOP: quantidadeOP,
+        quantidadeRetirada: quantidade
+      });
+
+      // Salva no navegador
+      localStorage.setItem("produtos", JSON.stringify(produtos));
+      localStorage.setItem("historico", JSON.stringify(historico));
+
+      // Limpa os campos
+      document.getElementById("codigoOP").value = "";
+      document.getElementById("quantidadeOP").value = "";
+      document.getElementById("produtoRetirada").value = "";
+      document.getElementById("quantidadeRetirada").value = "";
+
+      atualizarLista();
+      atualizarSaldo();
+      alert("Retirada realizada com sucesso!");
+    }
+
+    // ---------- ATUALIZAR LISTA DE ESTOQUE ----------
+    function atualizarLista() {
+      const lista = document.getElementById("listaEstoque");
+
+      if (produtos.length === 0) {
+        lista.innerHTML = "<li>Nenhum produto cadastrado ainda.</li>";
+        return;
+      }
+
+      lista.innerHTML = "";
+      produtos.forEach(function(p) {
+        lista.innerHTML += `<li><strong>${p.nome}</strong> — Quantidade: ${p.quantidade}</li>`;
+      });
+    }
+
+    // ---------- ATUALIZAR SALDO POR OP ----------
+    function atualizarSaldo() {
+      const lista = document.getElementById("listaSaldo");
+
+      if (historico.length === 0) {
+        lista.innerHTML = "<li>Nenhuma retirada registrada ainda.</li>";
+        return;
+      }
+
+      // Agrupa as retiradas por OP + Produto
+      const agrupado = {};
+
+      historico.forEach(function(item) {
+        const chave = item.codigoOP + " | " + item.produto;
+
+        if (!agrupado[chave]) {
+          agrupado[chave] = {
+            codigoOP: item.codigoOP,
+            produto: item.produto,
+            quantidadeOP: item.quantidadeOP,
+            totalRetirado: 0
+          };
+        }
+        agrupado[chave].totalRetirado += item.quantidadeRetirada;
+      });
+
+      lista.innerHTML = "";
+
+      for (let chave in agrupado) {
+        const item = agrupado[chave];
+        const falta = item.quantidadeOP - item.totalRetirado;
+
+        let status = "";
+        let classe = "";
+
+        if (falta > 0) {
+          status = `Faltam ${falta} unidades`;
+          classe = "saldo-falta";
+        } else if (falta < 0) {
+          status = `Retirou ${Math.abs(falta)} a mais`;
+          classe = "saldo-excesso";
+        } else {
+          status = "Completo";
+          classe = "saldo-ok";
+        }
+
+        lista.innerHTML += `
+          <li>
+            <strong>OP: ${item.codigoOP}</strong><br>
+            Produto: ${item.produto}<br>
+            Pedido pela OP: ${item.quantidadeOP}<br>
+            Já retirado: ${item.totalRetirado}<br>
+            <span class="${classe}">${status}</span>
+          </li>
+        `;
+      }
+    }
+  </script>
+
+</body>
+</html>
